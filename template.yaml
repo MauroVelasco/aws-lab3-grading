@@ -15,10 +15,10 @@ Resources:
     Properties:
       BucketName: !Sub images-${AWS::AccountId}-${AWS::Region}
 
-  MyProcessingQueue:
+  MetadataQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: "my-app-processing-queue"
+      QueueName: "metadata-queue"
       VisibilityTimeout: 300  # 5 minutes (Matches or exceeds Lambda timeout)
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt MyDeadLetterQueue.Arn
@@ -29,11 +29,11 @@ Resources:
     Properties:
       QueueName: "my-app-dlq"                        
 
-  GrayscaleFunction:
+  MetadataFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: app.lambda_handler
+      Handler: metadata.lambda_handler
       Environment:
         Variables:
           INPUT_PREFIX: incoming/
@@ -52,6 +52,9 @@ Resources:
                 Rules:
                   - Name: prefix
                     Value: incoming/
-                  - Name: suffix
-                    Value: .png
 
+  ProcessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler

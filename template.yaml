@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: S3 -> Lambda grayscale -> S3 (same bucket), loop prevention, no circular deps.
+Description: S3 → Lambda (Ingest) → SQS → Lambda (Metadata Extractor) → S3
 
 Globals:
   Function:
@@ -14,6 +14,20 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub images-${AWS::AccountId}-${AWS::Region}
+
+  MyProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "my-app-processing-queue"
+      VisibilityTimeout: 300  # 5 minutes (Matches or exceeds Lambda timeout)
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt MyDeadLetterQueue.Arn
+        maxReceiveCount: 5    # Move to DLQ after 5 failed attempts
+
+  MyDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "my-app-dlq"                        
 
   GrayscaleFunction:
     Type: AWS::Serverless::Function
@@ -40,3 +54,4 @@ Resources:
                     Value: incoming/
                   - Name: suffix
                     Value: .png
+
